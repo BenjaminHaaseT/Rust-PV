@@ -1,6 +1,7 @@
 use clap::{Arg, Command};
 use std::env;
-use std::io::{self, ErrorKind, Read, Write};
+use std::fs::File;
+use std::io::{self, BufReader, BufWriter, ErrorKind, Read, Write};
 
 const CHUNK_SIZE: usize = 16 * 1024;
 
@@ -29,13 +30,23 @@ fn main() -> io::Result<()> {
         !env::var("PV_SILENT").unwrap_or_default().is_empty()
     };
 
-    dbg!(infile, outfile, silent);
+    let mut reader: Box<dyn Read> = if !infile.is_empty() {
+        Box::new(BufReader::new(File::open(infile)?))
+    } else {
+        Box::new(BufReader::new(io::stdin()))
+    };
 
-    let silent = !env::var("PV_SILENT").unwrap_or_default().is_empty();
+    let mut writer: Box<dyn Write> = if !outfile.is_empty() {
+        Box::new(BufWriter::new(File::create(outfile)?))
+    } else {
+        Box::new(BufWriter::new(io::stdout()))
+    };
+
+    // let silent = !env::var("PV_SILENT").unwrap_or_default().is_empty();
     let mut total_bytes = 0;
     let mut buffer = [0; CHUNK_SIZE];
     loop {
-        let num_read = match io::stdin().read(&mut buffer) {
+        let num_read = match reader.read(&mut buffer) {
             Ok(0) => break,
             Ok(bytes_read) => bytes_read,
             Err(_) => break,
@@ -44,15 +55,16 @@ fn main() -> io::Result<()> {
         if !silent {
             eprint!("\r{}", total_bytes);
         }
-        if let Err(e) = io::stdout().write_all(&mut buffer) {
+        if let Err(e) = writer.write_all(&mut buffer) {
             if e.kind() == ErrorKind::BrokenPipe {
                 break;
             }
             return Err(e);
         }
     }
+
     if !silent {
-        eprintln!("total read: {}", total_bytes);
+        eprintln!("bytes read: {}", total_bytes);
     }
 
     Ok(())
