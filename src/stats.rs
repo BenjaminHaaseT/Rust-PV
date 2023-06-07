@@ -5,14 +5,15 @@ use std::time::{Duration, Instant};
 pub fn stats_loop(silent: bool, stats_rx: Receiver<usize>) -> Result<()> {
     let mut total_bytes = 0;
     let start = Instant::now();
-    let mut last_time = Instant::now();
+    let mut timer = Timer::new();
 
     loop {
         let num_bytes = stats_rx.recv().unwrap();
-        let now = Instant::now();
-        let rate_per_second = num_bytes as f64 / (now - last_time).as_secs_f64();
+        timer.update();
+        let rate_per_second = num_bytes as f64 / timer.delta.as_secs_f64();
         total_bytes += num_bytes;
-        if !silent {
+        if !silent && timer.ready {
+            timer.ready = false;
             eprint!(
                 "\r{} {}, [{:.0}b/s]",
                 total_bytes,
@@ -53,6 +54,7 @@ impl Timer {
     fn update(&mut self) {
         let now = Instant::now();
         self.delta = now - self.last_instant;
+        self.last_instant = now;
         self.countdown = self.countdown.checked_sub(self.delta).unwrap_or_else(|| {
             self.ready = true;
             self.period
