@@ -17,7 +17,7 @@ pub fn stats_loop(silent: bool, stats_rx: Receiver<usize>) -> Result<()> {
             eprint!(
                 "\r{} {}, [{:.0}b/s]",
                 total_bytes,
-                start.elapsed().as_secs(),
+                start.elapsed().as_secs().as_time(),
                 rate_per_second
             );
         }
@@ -29,6 +29,18 @@ pub fn stats_loop(silent: bool, stats_rx: Receiver<usize>) -> Result<()> {
         eprintln!();
     }
     Ok(())
+}
+
+trait TimeOutput {
+    fn as_time(&self) -> String;
+}
+
+impl TimeOutput for u64 {
+    fn as_time(&self) -> String {
+        let (hours, left) = (*self / 3600, *self % 3600);
+        let (minutes, seconds) = (left / 60, left % 60);
+        format!("{}:{:02}:{:02}", hours, minutes, seconds)
+    }
 }
 
 struct Timer {
