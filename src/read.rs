@@ -25,9 +25,9 @@ pub fn read_loop(infile: &str, stats_tx: Sender<usize>, write_tx: Sender<Vec<u8>
             break;
         }
     }
-    //TODO: send an empty buffer to the stats thread
-    stats_tx.send(0);
-    write_tx.send(Vec::new());
-    // stats_tx.send(Vec::new());
+
+    let _ = stats_tx.send(0);
+    let _ = write_tx.send(Vec::new());
+
     Ok(())
 }
